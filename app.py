@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import shap
+import numpy as np
 import matplotlib.pyplot as plt
 
 # =========================
@@ -127,7 +128,7 @@ if st.button(t["predict"]):
         "Income", "Education", "Sex", "AgeGroup", "MentHlth"
     ])
     
-    # Add engineered features
+    # ✅ Add engineered features
     input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
     input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
     
@@ -135,24 +136,43 @@ if st.button(t["predict"]):
     proba = model.predict_proba(input_df)[0, 1]
     st.metric(t["result"], f"{proba:.2%}")
     
-    # SHAP values
+    # SHAP values for transformed data
     X_transformed = model.named_steps["prep"].transform(input_df)
     shap_values = explainer.shap_values(X_transformed)[0]
     
-    # Map feature names to selected language
-    feature_labels = [
-        t["high_bp"], t["high_chol"], t["gen_hlth"], t["bmi"], t["phys_activity"],
-        t["income"], t["education"], t["sex"], t["age_group"], t["ment_hlth"],
-        "BMI × " + t["phys_activity"], t["age_group"] + "²"
-    ]
+    # Get transformed feature names
+    feature_names = model.named_steps["prep"].get_feature_names_out()
+    
+    # Map original features to translated labels
+    mapping = {
+        "HighBP": t["high_bp"],
+        "HighChol": t["high_chol"],
+        "GenHlth": t["gen_hlth"],
+        "BMI": t["bmi"],
+        "PhysActivity": t["phys_activity"],
+        "Income": t["income"],
+        "Education": t["education"],
+        "Sex": t["sex"],
+        "AgeGroup": t["age_group"],
+        "MentHlth": t["ment_hlth"],
+        "BMI_PhysAct": "BMI × " + t["phys_activity"],
+        "AgeGroup_Sq": t["age_group"] + "²"
+    }
+    
+    # Aggregate SHAP values back to original features
+    agg_shap = {}
+    for orig in mapping:
+        mask = [orig in fname for fname in feature_names]
+        agg_shap[mapping[orig]] = np.sum(shap_values[mask])
+    
+    # Create DataFrame for plotting
+    shap_df = pd.DataFrame({
+        "Feature": list(agg_shap.keys()),
+        "SHAP Value": list(agg_shap.values())
+    }).sort_values("SHAP Value", key=abs, ascending=True)
     
     # Plot SHAP values
     st.subheader(t["shap_title"])
-    shap_df = pd.DataFrame({
-        "Feature": feature_labels,
-        "SHAP Value": shap_values
-    }).sort_values("SHAP Value", key=abs, ascending=True)
-    
     fig, ax = plt.subplots()
     ax.barh(shap_df["Feature"], shap_df["SHAP Value"], 
             color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
