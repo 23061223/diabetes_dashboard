@@ -131,12 +131,16 @@ if st.button(t["predict"]):
         "Sex", "AgeGroup", "MentHlth"
     ])
 
-    # Engineered features
-    input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
-    input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
+# Engineered features
+input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
+input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
 
-    # Get calibrated probability
-    proba = model.predict_proba(input_df)[0, 1]
+# 🔹 Add the two extra features used in training
+input_df["BP_GenHlth"] = input_df["HighBP"] * input_df["GenHlth"]
+input_df["BMI_Age"] = input_df["BMI"] * input_df["AgeGroup"]
+
+# Get calibrated probability
+proba = model.predict_proba(input_df)[0, 1]
 
     # Clip to between 10% and 90%
     proba = max(0.10, min(0.90, proba))
