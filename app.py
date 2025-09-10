@@ -34,6 +34,7 @@ translations = {
         "predict": "Predict Risk",
         "result": "Predicted Diabetes Risk",
         "low_msg": "✅ Congratulations! Please continue a healthy lifestyle.",
+        "moderate_msg": "⚠️ Moderate risk — consider lifestyle improvements and regular check-ups.",
         "high_msg": "⚠️ Suggestion: Have a body check-up and maintain a healthy lifestyle.",
         "ref_note": "Disclaimer: This assessment is for reference only."
     }
@@ -134,14 +135,36 @@ if st.button(t["predict"]):
     input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
     input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
 
-    # Prediction
+    # Get raw probability
     proba = model.predict_proba(input_df)[0, 1]
 
-    # Risk display
-    color = "green" if proba < 0.5 else "red"
-    st.markdown(f"<h2 style='color:{color};'>{t['result']}: {proba:.1%}</h2>", unsafe_allow_html=True)
-    if proba < 0.5:
-        st.success(t["low_msg"])
+    # Clip to between 10% and 90%
+    proba = max(0.10, min(0.90, proba))
+
+    # Decide colour and message based on thresholds
+    if proba < 0.50:
+        color = "green"
+        message = t["low_msg"]
+    elif proba < 0.70:
+        color = "orange"
+        message = t["moderate_msg"]
     else:
-        st.error(t["high_msg"])
+        color = "red"
+        message = t["high_msg"]
+
+    # Display risk score
+    st.markdown(
+        f"<h2 style='color:{color};'>{t['result']}: {proba*100:.1f}%</h2>",
+        unsafe_allow_html=True
+    )
+
+    # Display advice
+    if color == "green":
+        st.success(message)
+    elif color == "orange":
+        st.warning(message)
+    else:
+        st.error(message)
+
+    # Disclaimer
     st.caption(t["ref_note"])
