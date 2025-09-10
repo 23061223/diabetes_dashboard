@@ -1,11 +1,14 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import shap
+import matplotlib.pyplot as plt
 
 # =========================
-# Load model
+# Load model & SHAP explainer
 # =========================
 model = joblib.load("pipeline.joblib")
+explainer = joblib.load("shap_explainer.pkl")
 
 # =========================
 # Translation dictionary
@@ -25,7 +28,8 @@ translations = {
         "sex": "Sex (0=Female, 1=Male)",
         "ment_hlth": "Days Mental Health Not Good (0-30)",
         "predict": "Predict Risk",
-        "result": "Predicted Diabetes Risk"
+        "result": "Predicted Diabetes Risk",
+        "shap_title": "🔍 Feature Contributions to Prediction"
     },
     "zh": {
         "title": "🩺 早期糖尿病风险预测",
@@ -41,7 +45,8 @@ translations = {
         "sex": "性别 (0=女, 1=男)",
         "ment_hlth": "心理健康不佳天数 (0-30)",
         "predict": "预测风险",
-        "result": "预测糖尿病风险"
+        "result": "预测糖尿病风险",
+        "shap_title": "🔍 特征对预测的贡献"
     },
     "ms": {
         "title": "🩺 Ramalan Risiko Diabetes Awal",
@@ -57,7 +62,8 @@ translations = {
         "sex": "Jantina (0=Perempuan, 1=Lelaki)",
         "ment_hlth": "Hari Kesihatan Mental Tidak Baik (0-30)",
         "predict": "Ramalkan Risiko",
-        "result": "Risiko Diabetes Diramal"
+        "result": "Risiko Diabetes Diramal",
+        "shap_title": "🔍 Sumbangan Ciri kepada Ramalan"
     }
 }
 
@@ -109,7 +115,7 @@ sex = st.selectbox(t["sex"], [0, 1])
 ment_hlth = st.slider(t["ment_hlth"], 0, 30, 0)
 
 # =========================
-# Prediction
+# Prediction + SHAP
 # =========================
 if st.button(t["predict"]):
     input_df = pd.DataFrame([[
@@ -120,5 +126,29 @@ if st.button(t["predict"]):
         "Income", "Education", "Sex", "AgeGroup", "MentHlth"
     ])
     
+    # Prediction
     proba = model.predict_proba(input_df)[0, 1]
     st.metric(t["result"], f"{proba:.2%}")
+    
+    # SHAP values
+    X_transformed = model.named_steps["prep"].transform(input_df)
+    shap_values = explainer.shap_values(X_transformed)[0]
+    
+    # Map feature names to selected language
+    feature_labels = [
+        t["high_bp"], t["high_chol"], t["gen_hlth"], t["bmi"], t["phys_activity"],
+        t["income"], t["education"], t["sex"], t["age_group"], t["ment_hlth"]
+    ]
+    
+    # Plot SHAP values
+    st.subheader(t["shap_title"])
+    shap_df = pd.DataFrame({
+        "Feature": feature_labels,
+        "SHAP Value": shap_values
+    }).sort_values("SHAP Value", key=abs, ascending=True)
+    
+    fig, ax = plt.subplots()
+    ax.barh(shap_df["Feature"], shap_df["SHAP Value"], color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
+    ax.axvline(0, color="black", linewidth=0.8)
+    ax.set_xlabel("Impact on Risk")
+    st.pyplot(fig)
