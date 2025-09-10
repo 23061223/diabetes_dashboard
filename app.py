@@ -118,6 +118,7 @@ ment_hlth = st.slider(t["ment_hlth"], 0, 30, 0)
 # Prediction + SHAP
 # =========================
 if st.button(t["predict"]):
+    # Raw input
     input_df = pd.DataFrame([[
         high_bp, high_chol, gen_hlth, bmi, phys_activity,
         income, education, sex, age_group, ment_hlth
@@ -125,6 +126,10 @@ if st.button(t["predict"]):
         "HighBP", "HighChol", "GenHlth", "BMI", "PhysActivity",
         "Income", "Education", "Sex", "AgeGroup", "MentHlth"
     ])
+    
+    # Add engineered features
+    input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
+    input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
     
     # Prediction
     proba = model.predict_proba(input_df)[0, 1]
@@ -137,7 +142,8 @@ if st.button(t["predict"]):
     # Map feature names to selected language
     feature_labels = [
         t["high_bp"], t["high_chol"], t["gen_hlth"], t["bmi"], t["phys_activity"],
-        t["income"], t["education"], t["sex"], t["age_group"], t["ment_hlth"]
+        t["income"], t["education"], t["sex"], t["age_group"], t["ment_hlth"],
+        "BMI × " + t["phys_activity"], t["age_group"] + "²"
     ]
     
     # Plot SHAP values
@@ -148,7 +154,8 @@ if st.button(t["predict"]):
     }).sort_values("SHAP Value", key=abs, ascending=True)
     
     fig, ax = plt.subplots()
-    ax.barh(shap_df["Feature"], shap_df["SHAP Value"], color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
+    ax.barh(shap_df["Feature"], shap_df["SHAP Value"], 
+            color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_xlabel("Impact on Risk")
     st.pyplot(fig)
