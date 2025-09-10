@@ -1,15 +1,11 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import shap
-import numpy as np
-import matplotlib.pyplot as plt
 
 # =========================
-# Load model & SHAP explainer
+# Load model
 # =========================
 model = joblib.load("pipeline.joblib")
-explainer = joblib.load("shap_explainer.pkl")
 
 # =========================
 # Translation dictionary (English only here — add zh, ms similarly)
@@ -37,7 +33,6 @@ translations = {
         "ment_hint": "Includes stress, depression, emotional problems.",
         "predict": "Predict Risk",
         "result": "Predicted Diabetes Risk",
-        "shap_title": "🔍 Feature Contributions to Prediction",
         "low_msg": "✅ Congratulations! Please continue a healthy lifestyle.",
         "high_msg": "⚠️ Suggestion: Have a body check-up and maintain a healthy lifestyle.",
         "ref_note": "Disclaimer: This assessment is for reference only."
@@ -124,7 +119,7 @@ high_bp = bp_to_flag(bp_input)
 high_chol = 1 if chol_input >= 6.2 else 0
 
 # =========================
-# Prediction + SHAP
+# Prediction
 # =========================
 if st.button(t["predict"]):
     input_df = pd.DataFrame([[
@@ -150,40 +145,3 @@ if st.button(t["predict"]):
     else:
         st.error(t["high_msg"])
     st.caption(t["ref_note"])
-"""
-    # SHAP aggregation
-    X_transformed = model.named_steps["prep"].transform(input_df)
-    shap_values = explainer.shap_values(X_transformed)[0]
-    feature_names = model.named_steps["prep"].get_feature_names_out()
-
-    mapping = {
-        "HighBP": t["bp"],
-        "HighChol": t["chol"],
-        "GenHlth": t["gen_hlth"],
-        "BMI": t["height"] + " & " + t["weight"],
-        "PhysActivity": t["phys_days"],
-        "Sex": t["sex"],
-        "AgeGroup": t["age"],
-        "MentHlth": t["ment_days"],
-        "BMI_PhysAct": "BMI × " + t["phys_days"],
-        "AgeGroup_Sq": t["age"] + "²"
-    }
-
-    agg_shap = {}
-    for orig in mapping:
-        mask = [orig in fname for fname in feature_names]
-        agg_shap[mapping[orig]] = np.sum(shap_values[mask])
-
-    shap_df = pd.DataFrame({
-        "Feature": list(agg_shap.keys()),
-        "SHAP Value": list(agg_shap.values())
-    }).sort_values("SHAP Value", key=abs, ascending=True)
-
-    st.subheader(t["shap_title"])
-    fig, ax = plt.subplots()
-    ax.barh(shap_df["Feature"], shap_df["SHAP Value"],
-            color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
-    ax.axvline(0, color="black", linewidth=0.8)
-    ax.set_xlabel("Impact on Risk")
-    st.pyplot(fig)
-"""
