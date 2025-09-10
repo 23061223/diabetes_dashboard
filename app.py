@@ -150,7 +150,7 @@ if st.button(t["predict"]):
     else:
         st.error(t["high_msg"])
     st.caption(t["ref_note"])
-
+"""
     # SHAP aggregation
     X_transformed = model.named_steps["prep"].transform(input_df)
     shap_values = explainer.shap_values(X_transformed)[0]
@@ -186,3 +186,4 @@ if st.button(t["predict"]):
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_xlabel("Impact on Risk")
     st.pyplot(fig)
+"""
