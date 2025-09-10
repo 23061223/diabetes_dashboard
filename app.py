@@ -3,9 +3,9 @@ import pandas as pd
 import joblib
 
 # =========================
-# Load model
+# Load calibrated model
 # =========================
-model = joblib.load("pipeline.joblib")
+model = joblib.load("pipeline_calibrated.joblib")
 
 # =========================
 # Translation dictionary (English only here — add zh, ms similarly)
@@ -135,7 +135,7 @@ if st.button(t["predict"]):
     input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
     input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
 
-    # Get raw probability
+    # Get calibrated probability
     proba = model.predict_proba(input_df)[0, 1]
 
     # Clip to between 10% and 90%
