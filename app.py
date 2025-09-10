@@ -5,176 +5,162 @@ import shap
 import numpy as np
 import matplotlib.pyplot as plt
 
-# =========================
 # Load model & SHAP explainer
-# =========================
 model = joblib.load("pipeline.joblib")
 explainer = joblib.load("shap_explainer.pkl")
 
-# =========================
-# Translation dictionary
-# =========================
+# Translation dictionary (shortened here for brevity — keep your full version)
 translations = {
     "en": {
         "title": "🩺 Early Diabetes Risk Prediction",
+        "disclaimer_top": "⚠️ This is a Master's project. Output is for reference only.",
         "lang_btn": "🌐 Language",
-        "age_group": "Age Group",
-        "high_bp": "High Blood Pressure",
-        "high_chol": "High Cholesterol",
+        "age": "Your Age (years)",
+        "bp": "Blood Pressure (mmHg)",
+        "bp_hint": "Normal: <120/80 mmHg. High BP: ≥140/90 mmHg.",
+        "chol": "Total Cholesterol (mmol/L)",
+        "chol_hint": "Normal: <5.2 mmol/L. High: ≥6.2 mmol/L.",
         "gen_hlth": "General Health (1=Excellent, 5=Poor)",
-        "bmi": "Body Mass Index (BMI)",
-        "phys_activity": "Physically Active?",
-        "income": "Income Level (1=Lowest, 8=Highest)",
-        "education": "Education Level (1=Lowest, 6=Highest)",
-        "sex": "Sex (0=Female, 1=Male)",
-        "ment_hlth": "Days Mental Health Not Good (0-30)",
+        "gen_hlth_hint": "1=Excellent, 2=Very Good, 3=Good, 4=Fair, 5=Poor",
+        "height": "Height (cm)",
+        "weight": "Weight (kg)",
+        "bmi_result": "Your BMI is {bmi:.1f} — {status}",
+        "phys_days": "Days Physical Health Not Good (0-30)",
+        "sex": "Sex",
+        "sex_female": "Female",
+        "sex_male": "Male",
+        "ment_days": "Days Mental Health Not Good (0-30)",
+        "ment_hint": "Includes stress, depression, emotional problems.",
         "predict": "Predict Risk",
         "result": "Predicted Diabetes Risk",
-        "shap_title": "🔍 Feature Contributions to Prediction"
-    },
-    "zh": {
-        "title": "🩺 早期糖尿病风险预测",
-        "lang_btn": "🌐 语言",
-        "age_group": "年龄组",
-        "high_bp": "高血压",
-        "high_chol": "高胆固醇",
-        "gen_hlth": "总体健康状况 (1=优秀, 5=差)",
-        "bmi": "身体质量指数 (BMI)",
-        "phys_activity": "是否有体育活动？",
-        "income": "收入水平 (1=最低, 8=最高)",
-        "education": "教育水平 (1=最低, 6=最高)",
-        "sex": "性别 (0=女, 1=男)",
-        "ment_hlth": "心理健康不佳天数 (0-30)",
-        "predict": "预测风险",
-        "result": "预测糖尿病风险",
-        "shap_title": "🔍 特征对预测的贡献"
-    },
-    "ms": {
-        "title": "🩺 Ramalan Risiko Diabetes Awal",
-        "lang_btn": "🌐 Bahasa",
-        "age_group": "Kumpulan Umur",
-        "high_bp": "Tekanan Darah Tinggi",
-        "high_chol": "Kolesterol Tinggi",
-        "gen_hlth": "Kesihatan Umum (1=Cemerlang, 5=Teruk)",
-        "bmi": "Indeks Jisim Badan (BMI)",
-        "phys_activity": "Aktif Secara Fizikal?",
-        "income": "Tahap Pendapatan (1=Terendah, 8=Tertinggi)",
-        "education": "Tahap Pendidikan (1=Terendah, 6=Tertinggi)",
-        "sex": "Jantina (0=Perempuan, 1=Lelaki)",
-        "ment_hlth": "Hari Kesihatan Mental Tidak Baik (0-30)",
-        "predict": "Ramalkan Risiko",
-        "result": "Risiko Diabetes Diramal",
-        "shap_title": "🔍 Sumbangan Ciri kepada Ramalan"
+        "shap_title": "🔍 Feature Contributions to Prediction",
+        "low_msg": "✅ Congratulations! Please continue a healthy lifestyle.",
+        "high_msg": "⚠️ Suggestion: Have a body check-up and maintain a healthy lifestyle.",
+        "ref_note": "Disclaimer: This assessment is for reference only."
     }
+    # zh, ms translations omitted here for brevity — keep your full set
 }
 
-# =========================
 # Language toggle state
-# =========================
 if "show_lang" not in st.session_state:
     st.session_state.show_lang = False
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
 
-# =========================
 # Language toggle button
-# =========================
 if st.button(translations[st.session_state.lang]["lang_btn"]):
     st.session_state.show_lang = not st.session_state.show_lang
-
 if st.session_state.show_lang:
     chosen_lang = st.radio(
         "Choose language / 选择语言 / Pilih bahasa",
-        ["en", "zh", "ms"],
-        format_func=lambda x: {"en": "English", "zh": "中文", "ms": "Bahasa Melayu"}[x],
+        ["en"],  # add zh, ms here
         horizontal=True
     )
     st.session_state.lang = chosen_lang
 
-# =========================
-# Active translation
-# =========================
 t = translations[st.session_state.lang]
 
-# =========================
-# App title
-# =========================
+# Top disclaimer
+st.markdown(f"**{t['disclaimer_top']}**")
+
 st.title(t["title"])
 
-# =========================
-# Input fields
-# =========================
-age_group = st.selectbox(t["age_group"], list(range(1, 14)))
-high_bp = st.selectbox(t["high_bp"], [0, 1])
-high_chol = st.selectbox(t["high_chol"], [0, 1])
+# Inputs
+age = st.number_input(t["age"], min_value=18, max_value=100, value=30)
+bp_input = st.text_input(t["bp"], placeholder="e.g., 120/80")
+st.caption(t["bp_hint"])
+chol_input = st.number_input(t["chol"], min_value=2.0, max_value=10.0, step=0.1)
+st.caption(t["chol_hint"])
 gen_hlth = st.selectbox(t["gen_hlth"], [1, 2, 3, 4, 5])
-bmi = st.number_input(t["bmi"], min_value=10.0, max_value=60.0, value=25.0)
-phys_activity = st.selectbox(t["phys_activity"], [0, 1])
-income = st.selectbox(t["income"], list(range(1, 9)))
-education = st.selectbox(t["education"], list(range(1, 7)))
-sex = st.selectbox(t["sex"], [0, 1])
-ment_hlth = st.slider(t["ment_hlth"], 0, 30, 0)
+st.caption(t["gen_hlth_hint"])
+height = st.number_input(t["height"], min_value=100, max_value=220, value=170)
+weight = st.number_input(t["weight"], min_value=30, max_value=200, value=65)
 
-# =========================
-# Prediction + SHAP
-# =========================
+# BMI calculation
+bmi = weight / ((height / 100) ** 2)
+bmi_status = "Healthy range" if 18.5 <= bmi <= 24.9 else "Outside healthy range"
+st.info(t["bmi_result"].format(bmi=bmi, status=bmi_status))
+
+phys_days = st.slider(t["phys_days"], 0, 30, 0)
+sex_choice = st.radio(t["sex"], [t["sex_female"], t["sex_male"]])
+sex = 0 if sex_choice == t["sex_female"] else 1
+ment_days = st.slider(t["ment_days"], 0, 30, 0)
+st.caption(t["ment_hint"])
+
+# Backend conversions
+# Age → AgeGroup
+def age_to_group(age):
+    bins = [24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 200]
+    for i, upper in enumerate(bins, start=1):
+        if age <= upper:
+            return i
+age_group = age_to_group(age)
+
+# BP → HighBP flag
+def bp_to_flag(bp_str):
+    try:
+        sys, dia = map(int, bp_str.split("/"))
+        return 1 if sys >= 140 or dia >= 90 else 0
+    except:
+        return 0
+high_bp = bp_to_flag(bp_input)
+
+# Cholesterol → HighChol flag
+high_chol = 1 if chol_input >= 6.2 else 0
+
+# Predict
 if st.button(t["predict"]):
-    # Raw input
     input_df = pd.DataFrame([[
-        high_bp, high_chol, gen_hlth, bmi, phys_activity,
-        income, education, sex, age_group, ment_hlth
+        high_bp, high_chol, gen_hlth, bmi, phys_days,
+        sex, age_group, ment_days
     ]], columns=[
         "HighBP", "HighChol", "GenHlth", "BMI", "PhysActivity",
-        "Income", "Education", "Sex", "AgeGroup", "MentHlth"
+        "Sex", "AgeGroup", "MentHlth"
     ])
-    
-    # ✅ Add engineered features
+
+    # Engineered features
     input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
     input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
-    
+
     # Prediction
     proba = model.predict_proba(input_df)[0, 1]
-    st.metric(t["result"], f"{proba:.2%}")
-    
-    # SHAP values for transformed data
+
+    # Risk display
+    color = "green" if proba < 0.5 else "red"
+    st.markdown(f"<h2 style='color:{color};'>{t['result']}: {proba:.1%}</h2>", unsafe_allow_html=True)
+    if proba < 0.5:
+        st.success(t["low_msg"])
+    else:
+        st.error(t["high_msg"])
+    st.caption(t["ref_note"])
+
+    # SHAP aggregation (same Option 2 logic as before)
     X_transformed = model.named_steps["prep"].transform(input_df)
     shap_values = explainer.shap_values(X_transformed)[0]
-    
-    # Get transformed feature names
     feature_names = model.named_steps["prep"].get_feature_names_out()
-    
-    # Map original features to translated labels
     mapping = {
-        "HighBP": t["high_bp"],
-        "HighChol": t["high_chol"],
+        "HighBP": t["bp"],
+        "HighChol": t["chol"],
         "GenHlth": t["gen_hlth"],
         "BMI": t["bmi"],
-        "PhysActivity": t["phys_activity"],
-        "Income": t["income"],
-        "Education": t["education"],
+        "PhysActivity": t["phys_days"],
         "Sex": t["sex"],
-        "AgeGroup": t["age_group"],
-        "MentHlth": t["ment_hlth"],
-        "BMI_PhysAct": "BMI × " + t["phys_activity"],
-        "AgeGroup_Sq": t["age_group"] + "²"
+        "AgeGroup": t["age"],
+        "MentHlth": t["ment_days"],
+        "BMI_PhysAct": "BMI × " + t["phys_days"],
+        "AgeGroup_Sq": t["age"] + "²"
     }
-    
-    # Aggregate SHAP values back to original features
     agg_shap = {}
     for orig in mapping:
         mask = [orig in fname for fname in feature_names]
         agg_shap[mapping[orig]] = np.sum(shap_values[mask])
-    
-    # Create DataFrame for plotting
     shap_df = pd.DataFrame({
         "Feature": list(agg_shap.keys()),
         "SHAP Value": list(agg_shap.values())
     }).sort_values("SHAP Value", key=abs, ascending=True)
-    
-    # Plot SHAP values
     st.subheader(t["shap_title"])
     fig, ax = plt.subplots()
-    ax.barh(shap_df["Feature"], shap_df["SHAP Value"], 
+    ax.barh(shap_df["Feature"], shap_df["SHAP Value"],
             color=["#FF4B4B" if v > 0 else "#4BFF4B" for v in shap_df["SHAP Value"]])
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_xlabel("Impact on Risk")
