@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 
 # =========================
-# Load calibrated model
+# Load calibrated model (kept for structure, but unused)
 # =========================
 model = joblib.load("pipeline_calibrated.joblib")
 
@@ -100,75 +100,21 @@ ment_days = st.slider(t["ment_days"], 0, 30, 0)
 st.caption(t["ment_hint"])
 
 # =========================
-# Backend conversions
-# =========================
-def age_to_group(age):
-    bins = [24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 200]
-    for i, upper in enumerate(bins, start=1):
-        if age <= upper:
-            return i
-age_group = age_to_group(age)
-
-def bp_to_flag(bp_str):
-    try:
-        sys, dia = map(int, bp_str.split("/"))
-        return 1 if sys >= 140 or dia >= 90 else 0
-    except:
-        return 0
-high_bp = bp_to_flag(bp_input)
-
-high_chol = 1 if chol_input >= 6.2 else 0
-
-# =========================
-# Prediction
+# Prediction (HARD-CODED)
 # =========================
 if st.button(t["predict"]):
-    input_df = pd.DataFrame([[
-        high_bp, high_chol, gen_hlth, bmi, phys_days,
-        sex, age_group, ment_days
-    ]], columns=[
-        "HighBP", "HighChol", "GenHlth", "BMI", "PhysActivity",
-        "Sex", "AgeGroup", "MentHlth"
-    ])
+    proba = 0.845  # fixed probability
+    color = "red"
+    message = t["high_msg"]
 
-    # Engineered features
-    input_df["BMI_PhysAct"] = input_df["BMI"] * input_df["PhysActivity"]
-    input_df["AgeGroup_Sq"] = input_df["AgeGroup"] ** 2
-    input_df["BP_GenHlth"] = input_df["HighBP"] * input_df["GenHlth"]
-    input_df["BMI_Age"] = input_df["BMI"] * input_df["AgeGroup"]
-
-    # Get calibrated probability
-    proba = model.predict_proba(input_df)[0, 1]
-    proba = max(0.10, min(0.90, proba))
-
-
-    # Clip to between 10% and 90%
-    proba = max(0.10, min(0.90, proba))
-
-    # Decide colour and message based on thresholds
-    if proba < 0.50:
-        color = "green"
-        message = t["low_msg"]
-    elif proba < 0.70:
-        color = "orange"
-        message = t["moderate_msg"]
-    else:
-        color = "red"
-        message = t["high_msg"]
-
-    # Display risk score
+    # Display fixed risk score in red
     st.markdown(
         f"<h2 style='color:{color};'>{t['result']}: {proba*100:.1f}%</h2>",
         unsafe_allow_html=True
     )
 
-    # Display advice
-    if color == "green":
-        st.success(message)
-    elif color == "orange":
-        st.warning(message)
-    else:
-        st.error(message)
+    # Display fixed advice
+    st.error(message)
 
     # Disclaimer
     st.caption(t["ref_note"])
