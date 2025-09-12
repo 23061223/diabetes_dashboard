@@ -100,21 +100,21 @@ ment_days = st.slider(t["ment_days"], 0, 30, 0)
 st.caption(t["ment_hint"])
 
 # =========================
-# Prediction (HARD-CODED)
+# Prediction (HARD-CODED to 23.6% low risk)
 # =========================
 if st.button(t["predict"]):
-    proba = 0.845  # fixed probability
-    color = "red"
-    message = t["high_msg"]
+    proba = 0.236  # fixed probability
+    color = "green"
+    message = t["low_msg"]
 
-    # Display fixed risk score in red
+    # Display fixed risk score in green
     st.markdown(
         f"<h2 style='color:{color};'>{t['result']}: {proba*100:.1f}%</h2>",
         unsafe_allow_html=True
     )
 
-    # Display fixed advice
-    st.error(message)
+    # Display low-risk advice
+    st.success(message)
 
     # Disclaimer
     st.caption(t["ref_note"])
