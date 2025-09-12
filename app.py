@@ -3,12 +3,12 @@ import pandas as pd
 import joblib
 
 # =========================
-# Load calibrated model (kept for structure, but unused)
+# Load calibrated model
 # =========================
 model = joblib.load("pipeline_calibrated.joblib")
 
 # =========================
-# Translation dictionary (English only here — add zh, ms similarly)
+# Translation dictionary
 # =========================
 translations = {
     "en": {
@@ -37,6 +37,60 @@ translations = {
         "moderate_msg": "⚠️ Moderate risk — consider lifestyle improvements and regular check-ups.",
         "high_msg": "⚠️ Suggestion: Have a body check-up and maintain a healthy lifestyle.",
         "ref_note": "Disclaimer: This assessment is for reference only."
+    },
+    "zh": {
+        "title": "🩺 早期糖尿病风险预测",
+        "disclaimer_top": "⚠️ 这是硕士项目，结果仅供参考。",
+        "lang_btn": "🌐 语言",
+        "age": "您的年龄（岁）",
+        "bp": "血压 (mmHg)",
+        "bp_hint": "正常：<120/80 mmHg。高血压：≥140/90 mmHg。",
+        "chol": "总胆固醇 (mmol/L)",
+        "chol_hint": "正常：<5.2 mmol/L。偏高：≥6.2 mmol/L。",
+        "gen_hlth": "总体健康状况 (1=优秀, 5=差)",
+        "gen_hlth_hint": "1=优秀, 2=很好, 3=好, 4=一般, 5=差",
+        "height": "身高 (cm)",
+        "weight": "体重 (kg)",
+        "bmi_result": "您的BMI为 {bmi:.1f} — {status}",
+        "phys_days": "身体不适天数 (0-30)",
+        "sex": "性别",
+        "sex_female": "女",
+        "sex_male": "男",
+        "ment_days": "心理不适天数 (0-30)",
+        "ment_hint": "包括压力、抑郁、情绪问题。",
+        "predict": "预测风险",
+        "result": "预测糖尿病风险",
+        "low_msg": "✅ 恭喜！请继续保持健康的生活方式。",
+        "moderate_msg": "⚠️ 中等风险 — 建议改善生活方式并定期检查。",
+        "high_msg": "⚠️ 建议体检并保持健康的生活方式。",
+        "ref_note": "免责声明：本评估仅供参考。"
+    },
+    "ms": {
+        "title": "🩺 Ramalan Awal Risiko Diabetes",
+        "disclaimer_top": "⚠️ Ini adalah projek Sarjana. Keputusan hanya untuk rujukan.",
+        "lang_btn": "🌐 Bahasa",
+        "age": "Umur Anda (tahun)",
+        "bp": "Tekanan Darah (mmHg)",
+        "bp_hint": "Normal: <120/80 mmHg. Tekanan tinggi: ≥140/90 mmHg.",
+        "chol": "Kolesterol Jumlah (mmol/L)",
+        "chol_hint": "Normal: <5.2 mmol/L. Tinggi: ≥6.2 mmol/L.",
+        "gen_hlth": "Kesihatan Umum (1=Cemerlang, 5=Teruk)",
+        "gen_hlth_hint": "1=Cemerlang, 2=Sangat Baik, 3=Baik, 4=Sederhana, 5=Teruk",
+        "height": "Tinggi (cm)",
+        "weight": "Berat (kg)",
+        "bmi_result": "BMI anda ialah {bmi:.1f} — {status}",
+        "phys_days": "Hari Kesihatan Fizikal Tidak Baik (0-30)",
+        "sex": "Jantina",
+        "sex_female": "Perempuan",
+        "sex_male": "Lelaki",
+        "ment_days": "Hari Kesihatan Mental Tidak Baik (0-30)",
+        "ment_hint": "Termasuk tekanan, kemurungan, masalah emosi.",
+        "predict": "Ramalkan Risiko",
+        "result": "Risiko Diabetes Diramalkan",
+        "low_msg": "✅ Tahniah! Teruskan gaya hidup sihat.",
+        "moderate_msg": "⚠️ Risiko sederhana — pertimbangkan penambahbaikan gaya hidup dan pemeriksaan berkala.",
+        "high_msg": "⚠️ Cadangan: Lakukan pemeriksaan kesihatan dan kekalkan gaya hidup sihat.",
+        "ref_note": "Penafian: Penilaian ini hanya untuk rujukan."
     }
 }
 
@@ -56,7 +110,7 @@ if st.button(translations[st.session_state.lang]["lang_btn"]):
 if st.session_state.show_lang:
     chosen_lang = st.radio(
         "Choose language / 选择语言 / Pilih bahasa",
-        ["en"],  # add zh, ms here
+        ["en", "zh", "ms"],
         horizontal=True
     )
     st.session_state.lang = chosen_lang
@@ -86,9 +140,7 @@ st.caption(t["gen_hlth_hint"])
 height = st.number_input(t["height"], min_value=100, max_value=220, value=170)
 weight = st.number_input(t["weight"], min_value=30, max_value=200, value=65)
 
-# =========================
-# BMI calculation (explicit healthy range)
-# =========================
+# BMI calculation
 bmi = weight / ((height / 100) ** 2)
 if 18.5 <= bmi <= 24.9:
     bmi_status = "Healthy range (18.5–24.9 kg/m²)"
@@ -105,21 +157,13 @@ ment_days = st.slider(t["ment_days"], 0, 30, 0)
 st.caption(t["ment_hint"])
 
 # =========================
-# Prediction (HARD-CODED to 86.7% high risk)
+# Backend conversions
 # =========================
-if st.button(t["predict"]):
-    proba = 0.867  # fixed probability
-    color = "red"
-    message = t["high_msg"]
+def age_to_group(age):
+    bins = [24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 200]
+    for i, upper in enumerate(bins, start=1):
+        if age <= upper:
+            return i
+age_group = age_to_group(age)
 
-    # Display fixed risk score in red
-    st.markdown(
-        f"<h2 style='color:{color};'>{t['result']}: {proba*100:.1f}%</h2>",
-        unsafe_allow_html=True
-    )
-
-    # Display high-risk advice
-    st.error(message)
-
-    # Disclaimer
-    st.caption(t["ref_note"])
+def bp_to_flag
